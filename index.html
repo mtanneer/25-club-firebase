@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The 25 Club</title>
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700&family=Work+Sans:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="logo">25</div>
+            <div class="tagline">the receipts on a quarter century</div>
+        </header>
+
+        <!-- Landing Page -->
+        <div id="landing">
+            <div class="welcome-box">
+                <p>we're all turning 25 this year.</p>
+                <p>which is, kinda crazy (and almost a decade since sarita's last class lmao)</p>
+                <p>here's how this works:</p>
+                <p style="margin-left: 20px;">- on your birthday, your access to the portal unlocks</p>
+                <p style="margin-left: 20px;">- write what you actually learned, what you'd tell 18 year old you, what mattered way less than you thought it would and how it feels to be an unc. also this isn't linkedin, pls don't be diplomatic. be as raw and honest as you'd be if we'd all be in the same room together (hopefully soon :')</p>
+                <p style="margin-left: 20px;">- then it passes to the next person.</p>
+                <p>by the end of the year, we'll have everyone's honest take on 25 years of being alive.</p>
+            </div>
+
+            <div class="auth-box">
+                <h2>alright, let's go</h2>
+                <input type="text" id="passwordInput" class="password-input" placeholder="code">
+                <br>
+                <button id="loginBtn" class="btn btn-primary">get in</button>
+            </div>
+        </div>
+
+        <!-- Main App -->
+        <div id="mainApp" class="hidden">
+            <div class="nav-tabs" id="navTabs">
+                <!-- Tabs controlled by JS -->
+            </div>
+
+            <!-- Timeline Tab -->
+            <div id="timelineTab" class="tab-content active">
+                <div class="timeline" id="timelineContainer">
+                    <!-- Populated by JS -->
+                </div>
+            </div>
+
+            <!-- Setup Tab -->
+            <div id="setupTab" class="tab-content">
+                <div class="setup-form">
+                    <div class="setup-header">
+                        <h2>who's in?</h2>
+                        <button id="logoutBtn" class="btn btn-secondary" style="padding: 12px 25px;">← back</button>
+                    </div>
+                    <p style="margin-bottom: 30px; color: var(--text-dim);">add everyone's name + birthday (DD/MM). we'll sort it out.</p>
+                    
+                    <div id="friendsList">
+                        <!-- Populated by JS -->
+                    </div>
+
+                    <button id="addFriendBtn" class="btn btn-add">+ add another</button>
+                    
+                    <div style="margin-top: 40px;">
+                        <button id="saveSetupBtn" class="btn btn-primary" style="width: 100%;">lock it in</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Write Reflection Modal -->
+        <div id="writeModal" class="modal-overlay">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>your turn</h2>
+                    <button class="modal-close" id="closeWriteBtn">×</button>
+                </div>
+                <div class="modal-body">
+                    <div class="prompts-section">
+                        <h3>some starters if you're stuck:</h3>
+                        <ul>
+                            <li>what would you tell yourself at 18?</li>
+                            <li>what lesson took way too long to learn?</li>
+                            <li>what's the best advice you got (that you actually followed)?</li>
+                            <li>what did you think mattered that… really doesn't?</li>
+                            <li>what surprised you most about your 20s so far?</li>
+                            <li>what do you know now that you wish you knew sooner?</li>
+                        </ul>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">alright, spill:</label>
+                        <textarea id="reflectionText" class="reflection-textarea" placeholder="just be real. that's the whole point."></textarea>
+                    </div>
+                    <div id="overthinkingMsg" class="overthinking-msg" style="display: none;"></div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" id="cancelWriteBtn">not yet</button>
+                    <button class="btn btn-primary" id="saveReflectionBtn">lock it in</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Read Reflection Modal -->
+        <div id="readModal" class="modal-overlay">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2 id="readModalName"></h2>
+                    <button class="modal-close" id="closeReadBtn">×</button>
+                </div>
+                <div class="modal-body">
+                    <div class="reflection-content" id="readModalContent" style="font-size: 1.1rem; line-height: 1.9;"></div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-primary" id="closeReadFooterBtn">close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
+    <script type="module" src="script.js"></script>
+</body>
+</html>
