@@ -572,6 +572,22 @@ header {
     border-color: var(--accent);
 }
 
+/* Small trash button for admin delete on timeline */
+.btn-trash {
+    background: none;
+    border: none;
+    color: var(--text-dim);
+    cursor: pointer;
+    font-size: 1.1rem;
+    padding: 6px;
+    border-radius: 6px;
+}
+
+.btn-trash:hover {
+    color: var(--accent);
+    background: rgba(255,107,53,0.06);
+}
+
 .btn-add {
     width: 100%;
     background: var(--bg);

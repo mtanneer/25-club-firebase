@@ -27,6 +27,8 @@ const EMAILJS_CONFIG = {
     }
 };
 
+const WEBPAGE_URL = 'https://25-birthdays.netlify.app/';
+
 // Initialize EmailJS and make it global
 window.emailjs = emailjs;
 emailjs.init(EMAILJS_CONFIG.publicKey);
@@ -197,7 +199,8 @@ function showApp() {
 
     const navTabs = document.getElementById('navTabs');
     if (state.isSetupMode) {
-        navTabs.innerHTML = '<button class="nav-tab active" data-tab="setup">setup</button>';
+        // Show both timeline and setup tabs for admin
+        navTabs.innerHTML = '<button class="nav-tab" data-tab="timeline">the receipts</button><button class="nav-tab active" data-tab="setup">setup</button>';
     } else {
         navTabs.innerHTML = '<button class="nav-tab active" data-tab="timeline">the receipts</button>';
     }
@@ -233,12 +236,13 @@ function showTab(tabName) {
     if (tabName === 'setup') renderSetup();
 }
 
-// Render timeline
 function renderTimeline() {
     const container = document.getElementById('timelineContainer');
     const today = getToday();
 
-    if (state.friends.length === 0) {
+    if (!container) return;
+
+    if (!state.friends || state.friends.length === 0) {
         container.innerHTML = `
             <div class="empty-state">
                 <div class="empty-state-icon">📦</div>
@@ -249,41 +253,93 @@ function renderTimeline() {
         return;
     }
 
-    container.innerHTML = state.friends.map(friend => {
+    // Helper to safely escape user-provided strings
+    const escapeHtml = (str = '') => String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+
+    const cards = state.friends.map(friend => {
         const reflection = state.reflections[friend.name];
         const hasReflection = !!reflection;
         const birthdayPassed = hasBirthdayPassed(normalizeDate(friend.birthday), today);
         const isCurrentUser = state.currentUser && state.currentUser.name === friend.name;
+        const showDelete = !!state.isSetupMode;
+        const dotClass = hasReflection ? 'completed' : (birthdayPassed ? '' : 'upcoming');
+
+        const cardClasses = ['reflection-card'];
+        if (!birthdayPassed) cardClasses.push('upcoming');
+        if (isCurrentUser) cardClasses.push('current-user');
+
+        const action = isCurrentUser ? 'write' : (hasReflection && birthdayPassed ? 'read' : '');
+        const dataName = encodeURIComponent(friend.name);
+
+        let innerContent = '';
+
+        if (hasReflection) {
+            innerContent = `
+                <div class="reflection-preview">${escapeHtml(reflection)}</div>
+                ${!isCurrentUser ? '<div class="read-more">read more →</div>' : ''}
+            `;
+        } else if (birthdayPassed) {
+            innerContent = `
+                <div class="reflection-content" style="font-style: italic; color: var(--text-dim);">
+                    ${isCurrentUser ? 'click to write something' : `waiting on ${escapeHtml(friend.name)}...`}
+                </div>
+            `;
+        } else {
+            innerContent = `
+                <div class="reflection-content" style="font-style: italic; color: var(--text-dim);">
+                    unlocks ${escapeHtml(friend.birthday)}
+                </div>
+            `;
+        }
 
         return `
             <div class="timeline-item">
-                <div class="timeline-dot ${hasReflection ? 'completed' : birthdayPassed ? '' : 'upcoming'}"></div>
-                <div class="reflection-card ${!birthdayPassed ? 'upcoming' : ''} ${isCurrentUser ? 'current-user' : ''}"
-                     onclick="${isCurrentUser ? 'openWriteModal()' : (hasReflection ? `openReadModal('${friend.name.replace(/'/g, "\\'")}')` : '')}">
+                <div class="timeline-dot ${dotClass}"></div>
+                <div class="${cardClasses.join(' ')}" data-name="${dataName}" data-action="${action}">
                     <div class="reflection-header">
                         <div class="reflection-name">
-                            ${friend.name}${isCurrentUser ? ' (you)' : ''}
+                            ${escapeHtml(friend.name)}${isCurrentUser ? ' (you)' : ''}
                             ${isCurrentUser && !hasReflection ? '<span class="edit-indicator">your turn</span>' : ''}
                             ${isCurrentUser && hasReflection ? '<span class="edit-indicator">edit</span>' : ''}
                         </div>
-                        <div class="reflection-date">${friend.birthday}</div>
+                        <div style="display:flex; align-items:center; gap:8px;">
+                            <div class="reflection-date">${escapeHtml(friend.birthday)}</div>
+                            ${showDelete ? `<button class="btn-trash" title="Delete reflection" aria-label="Delete reflection" data-name="${dataName}">🗑</button>` : ''}
+                        </div>
                     </div>
-                    ${hasReflection ? `
-                        <div class="reflection-preview">${reflection}</div>
-                        ${!isCurrentUser ? '<div class="read-more">read more →</div>' : ''}
-                    ` : birthdayPassed ? `
-                        <div class="reflection-content" style="font-style: italic; color: var(--text-dim);">
-                            ${isCurrentUser ? 'click to write something' : `waiting on ${friend.name}...`}
-                        </div>
-                    ` : `
-                        <div class="reflection-content" style="font-style: italic; color: var(--text-dim);">
-                            unlocks ${friend.birthday}
-                        </div>
-                    `}
+                    ${innerContent}
                 </div>
             </div>
         `;
     }).join('');
+
+    container.innerHTML = cards;
+
+    // Attach event handlers
+    container.querySelectorAll('.reflection-card').forEach(card => {
+        card.addEventListener('click', function() {
+            const name = decodeURIComponent(this.dataset.name || '');
+            const action = this.dataset.action;
+            if (action === 'write') {
+                openWriteModal();
+            } else if (action === 'read') {
+                openReadModal(name);
+            }
+        });
+    });
+
+    container.querySelectorAll('.btn-trash').forEach(btn => {
+        btn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            const name = decodeURIComponent(this.dataset.name || '');
+            deleteReflection(name);
+        });
+    });
 }
 
 // Open write modal
@@ -325,6 +381,40 @@ function openReadModal(friendName) {
 // Close read modal
 function closeReadModal() {
     document.getElementById('readModal').classList.remove('active');
+}
+
+// Delete a reflection (admin only)
+function deleteReflection(friendName) {
+    if (!confirm(`Delete reflection for ${friendName}? This will remove their reflection and related metadata. Proceed?`)) return;
+
+    if (!state.reflections || !state.reflections[friendName]) {
+        alert('No reflection found for ' + friendName);
+        return;
+    }
+
+    // Remove reflection and related metadata but keep the friend entry
+    try { delete state.reflections[friendName]; } catch (e) {}
+    try { delete state.editCounts[friendName]; } catch (e) {}
+    try { delete state.hasPostedFirst[friendName]; } catch (e) {}
+
+    saveData();
+    renderTimeline();
+
+    alert(`Reflection for ${friendName} deleted.`);
+}
+
+// Delete all reflections (admin)
+function deleteAllReflections() {
+    if (!confirm('Delete ALL reflections and metadata for everyone? This cannot be undone. Proceed?')) return;
+
+    state.reflections = {};
+    state.editCounts = {};
+    state.hasPostedFirst = {};
+
+    saveData();
+    renderTimeline();
+
+    alert('All reflections deleted.');
 }
 
 // Save reflection
@@ -378,7 +468,7 @@ function sendBirthdayEmail(friend) {
             to_name: friend.name,
             to_email: friend.email,
             access_code: generatePassword(friend.name, friend.birthday),
-            website_url: 'https://eclectic-medovik-b5f218.netlify.app/'
+            website_url: WEBPAGE_URL
         }
     ).then(
         () => console.log(`Birthday email sent to ${friend.email}`),
@@ -406,7 +496,7 @@ function sendNewReflectionEmails() {
                 to_name: friend.name,
                 to_email: friend.email,
                 author_name: state.currentUser.name,
-                website_url: 'https://eclectic-medovik-b5f218.netlify.app/'
+                website_url: WEBPAGE_URL
             }
         ).then(
             () => console.log(`Notification sent to ${friend.name}`),
@@ -443,14 +533,51 @@ function renderSetup() {
         state.friends.push({ name: '', birthday: '', email: '' });
     }
 
-    container.innerHTML = state.friends.map((friend, index) => `
+    // Helper to escape HTML
+    const escapeHtml = (str = '') => String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+
+    let html = state.friends.map((friend, index) => `
         <div class="friend-row" style="grid-template-columns: 1fr 140px 1fr 40px; margin-bottom: 20px;">
-            <input type="text" class="form-input" placeholder="name" value="${friend.name}" data-index="${index}" data-field="name">
-            <input type="text" class="form-input" placeholder="DD/MM" value="${friend.birthday}" data-index="${index}" data-field="birthday">
-            <input type="email" class="form-input" placeholder="email" value="${friend.email || ''}" data-index="${index}" data-field="email">
+            <input type="text" class="form-input" placeholder="name" value="${escapeHtml(friend.name)}" data-index="${index}" data-field="name">
+            <input type="text" class="form-input" placeholder="DD/MM" value="${escapeHtml(friend.birthday)}" data-index="${index}" data-field="birthday">
+            <input type="email" class="form-input" placeholder="email" value="${escapeHtml(friend.email || '')}" data-index="${index}" data-field="email">
             <button class="btn btn-remove" data-index="${index}">×</button>
         </div>
     `).join('');
+
+    // If admin, show a reflections management panel
+    if (state.isSetupMode) {
+        const reflectionEntries = state.friends.map(friend => {
+            const reflection = state.reflections[friend.name] || '';
+            return `
+                <div class="reflection-row" style="display:flex; align-items:flex-start; gap:12px; margin-bottom:12px;">
+                    <div style="flex: 0 0 160px; font-weight:600;">${escapeHtml(friend.name)}</div>
+                    <div style="flex:1; color:var(--text);">${reflection ? `<div class="reflection-admin-preview">${escapeHtml(reflection)}</div>` : '<div style="color:var(--text-dim);">— no reflection</div>'}</div>
+                    <div style="flex:0 0 auto;">
+                        ${reflection ? `<button class="btn btn-danger btn-delete-reflection" data-name="${encodeURIComponent(friend.name)}">Delete</button>` : ''}
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        html += `
+            <hr style="margin: 20px 0;" />
+            <h3 style="margin-bottom:10px;">Reflections (admin)</h3>
+            <div id="adminReflections">
+                ${reflectionEntries || '<div style="color:var(--text-dim);">no reflections yet</div>'}
+                <div style="margin-top: 12px;">
+                    <button id="deleteAllReflectionsBtn" class="btn btn-danger">Delete all reflections</button>
+                </div>
+            </div>
+        `;
+    }
+
+    container.innerHTML = html;
 
     setTimeout(() => {
         container.querySelectorAll('input').forEach(input => {
@@ -471,6 +598,27 @@ function renderSetup() {
                 renderSetup();
             });
         });
+
+        // Attach delete reflection handlers for admin
+        container.querySelectorAll('.btn-delete-reflection').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const name = decodeURIComponent(this.dataset.name || '');
+                if (!name) return;
+                if (!confirm(`Delete reflection for ${name}? This will remove their reflection and related metadata. Proceed?`)) return;
+                deleteReflection(name);
+                renderSetup();
+            });
+        });
+
+        const deleteAllBtn = document.getElementById('deleteAllReflectionsBtn');
+        if (deleteAllBtn) {
+            deleteAllBtn.addEventListener('click', function() {
+                if (!confirm('Delete ALL reflections and metadata for everyone? This cannot be undone. Proceed?')) return;
+                deleteAllReflections();
+                renderSetup();
+            });
+        }
+
     }, 0);
 }
 
@@ -570,3 +718,5 @@ loadData().then(() => {
 // Make functions globally accessible for timeline cards
 window.openWriteModal = openWriteModal;
 window.openReadModal = openReadModal;
+window.deleteReflection = deleteReflection;
+window.deleteAllReflections = deleteAllReflections;
