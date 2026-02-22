@@ -462,13 +462,14 @@ function saveReflection() {
 
 // Send birthday reminder email
 function sendBirthdayEmail(friend) {
+    console.log(`Existing password for ${friend.name}: ${friend.password}`);
     emailjs.send(
         EMAILJS_CONFIG.serviceId,
         EMAILJS_CONFIG.templates.birthday,
         {
             to_name: friend.name,
             to_email: friend.email,
-            access_code: generatePassword(friend.name, friend.birthday),
+            access_code: friend.password ? friend.password : generatePassword(friend.name, friend.birthday),
             website_url: WEBPAGE_URL
         }
     ).then(
@@ -513,11 +514,11 @@ function checkBirthdays() {
     state.friends.forEach(friend => {
         if (normalizeDate(friend.birthday) === today && friend.email) {
             // Check if we already sent today (store in localStorage)
-            const sentKey = `birthday-sent-${friend.name}-${today}`;
-            if (!localStorage.getItem(sentKey)) {
+            // const sentKey = `birthday-sent-${friend.name}-${today}`;
+            // if (!localStorage.getItem(sentKey)) {
                 sendBirthdayEmail(friend);
-                localStorage.setItem(sentKey, 'true');
-            }
+                // localStorage.setItem(sentKey, 'true');
+            // }
         }
     });
 }
