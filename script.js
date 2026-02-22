@@ -19,8 +19,9 @@ const clubDataRef = doc(db, 'club-data', 'main');
 
 // EmailJS Configuration
 const EMAILJS_CONFIG = {
-    publicKey: 'iGNyyx4P-neaGTs8m',
-    serviceId: 'service_6vriq0w',
+    // publicKey: 'iGNyyx4P-neaGTs8m',
+    publicKey: 'BWBDaA8H5iAZ1zeGb',
+    serviceId: 'service_lytnn6f',
     templates: {
         birthday: 'birthday_reminder',
         newReflection: 'new_reflection'
@@ -177,12 +178,12 @@ function checkLogin() {
             renderTimeline();
             return;
         } else {
-            alert(`hey ${friend.name}! come back on your birthday (${friend.birthday}). \n\nit's ${today} right now. see you soon 🎂`);
+            alert(`Hey ${friend.name}! Come back on your birthday (${friend.birthday}). \n\nIt's ${today} right now. See ya soon 🎂`);
             return;
         }
     }
 
-    alert('nope. try "setup25" to set things up, or use your code on your birthday.');
+    alert('nope. Use your code on your birthday.');
 }
 
 // Allow Enter key
