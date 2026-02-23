@@ -36,17 +36,77 @@ emailjs.init(EMAILJS_CONFIG.publicKey);
 
 const SETUP_PASSWORD = 'setup25';
 
+/**
+ * STATE MANAGEMENT STRUCTURE
+ * 
+ * Persistent Data (stored in Firebase):
+ *   - friends: array of friend objects with name, birthday, email, password, randomSuffix
+ *   - reflections: object mapping friend name to their reflection text
+ *   - editCounts: object tracking how many times each friend has edited their reflection
+ *   - hasPostedFirst: object tracking whether each friend has posted their first draft
+ * 
+ * Session Data (stored in sessionStorage, NOT persistent):
+ *   - currentUser: the logged-in friend object (null if not logged in)
+ *   - isSetupMode: boolean indicating admin/setup mode
+ */
+
 let state = {
+    // PERSISTENT DATA (synced with Firebase)
     friends: [],
     reflections: {},
-    currentUser: null,
-    isSetupMode: false,
     editCounts: {},
-    hasPostedFirst: {}
+    hasPostedFirst: {},
+
+    // SESSION DATA (in-memory only, survives page refresh via sessionStorage)
+    currentUser: null,
+    isSetupMode: false
 };
 
-// Load data from Firestore
-async function loadData() {
+/**
+ * SESSION MANAGEMENT
+ * Store and retrieve session data (currentUser, isSetupMode) from sessionStorage
+ * These are not persisted to Firebase since they're per-session
+ */
+
+function loadSessionData() {
+    try {
+        const sessionData = sessionStorage.getItem('clubSessionData');
+        if (sessionData) {
+            const parsed = JSON.parse(sessionData);
+            state.currentUser = parsed.currentUser || null;
+            state.isSetupMode = parsed.isSetupMode || false;
+            console.log('Session data restored');
+        }
+    } catch (error) {
+        console.error('Error loading session data:', error);
+        state.currentUser = null;
+        state.isSetupMode = false;
+    }
+}
+
+function saveSessionData() {
+    try {
+        sessionStorage.setItem('clubSessionData', JSON.stringify({
+            currentUser: state.currentUser,
+            isSetupMode: state.isSetupMode
+        }));
+    } catch (error) {
+        console.error('Error saving session data:', error);
+    }
+}
+
+function clearSessionData() {
+    sessionStorage.removeItem('clubSessionData');
+    state.currentUser = null;
+    state.isSetupMode = false;
+}
+
+/**
+ * FIREBASE PERSISTENT DATA MANAGEMENT
+ * All persistent state is synchronized with Firestore
+ */
+
+async function loadPersistentData() {
     try {
         const docSnap = await getDoc(clubDataRef);
         if (docSnap.exists()) {
@@ -55,17 +115,16 @@ async function loadData() {
             state.reflections = data.reflections || {};
             state.editCounts = data.editCounts || {};
             state.hasPostedFirst = data.hasPostedFirst || {};
-            console.log('Data loaded from Firebase');
+            console.log('Persistent data loaded from Firebase');
         } else {
-            console.log('No data found, starting fresh');
+            console.log('No persistent data found, starting fresh');
         }
     } catch (error) {
-        console.error('Error loading data:', error);
+        console.error('Error loading persistent data:', error);
     }
 }
 
-// Save data to Firestore
-async function saveData() {
+async function savePersistentData() {
     try {
         await setDoc(clubDataRef, {
             friends: state.friends,
@@ -74,14 +133,20 @@ async function saveData() {
             hasPostedFirst: state.hasPostedFirst,
             lastUpdated: new Date().toISOString()
         });
-        console.log('Data saved to Firebase');
+        console.log('Persistent data saved to Firebase');
     } catch (error) {
-        console.error('Error saving data:', error);
+        console.error('Error saving persistent data:', error);
         alert('Failed to save. Check your internet connection.');
     }
 }
 
-// Real-time listener for data changes
+// Keep the old function name for backwards compatibility
+const saveData = savePersistentData;
+
+/**
+ * REAL-TIME FIRESTORE LISTENER
+ * Automatically updates state when data changes in Firebase
+ */
 onSnapshot(clubDataRef, (doc) => {
     if (doc.exists()) {
         const data = doc.data();
@@ -94,7 +159,7 @@ onSnapshot(clubDataRef, (doc) => {
         if (state.currentUser) {
             renderTimeline();
         }
-        console.log('Data updated from Firebase');
+        console.log('Real-time data updated from Firebase');
     }
 });
 
@@ -155,6 +220,7 @@ function checkLogin() {
 
     if (input === SETUP_PASSWORD) {
         state.isSetupMode = true;
+        saveSessionData();
         showApp();
         showTab('setup');
         return;
@@ -174,6 +240,7 @@ function checkLogin() {
         if (hasBirthdayPassed(normalizeDate(friend.birthday), today)) {
             state.currentUser = friend;
             state.isSetupMode = false;
+            saveSessionData();
             showApp();
             renderTimeline();
             return;
@@ -215,8 +282,7 @@ function showApp() {
 
 // Logout
 function logout() {
-    state.currentUser = null;
-    state.isSetupMode = false;
+    clearSessionData();
     document.getElementById('landing').classList.remove('hidden');
     document.getElementById('mainApp').classList.add('hidden');
     document.getElementById('passwordInput').value = '';
@@ -398,7 +464,7 @@ function deleteReflection(friendName) {
     try { delete state.editCounts[friendName]; } catch (e) {}
     try { delete state.hasPostedFirst[friendName]; } catch (e) {}
 
-    saveData();
+    savePersistentData();
     renderTimeline();
 
     alert(`Reflection for ${friendName} deleted.`);
@@ -412,7 +478,7 @@ function deleteAllReflections() {
     state.editCounts = {};
     state.hasPostedFirst = {};
 
-    saveData();
+    savePersistentData();
     renderTimeline();
 
     alert('All reflections deleted.');
@@ -447,7 +513,7 @@ function saveReflection() {
         state.hasPostedFirst[state.currentUser.name] = true;
     }
 
-    saveData();
+    savePersistentData();
 
     // Send email notifications for first post only
     if (isFirstPost) {
@@ -513,12 +579,7 @@ function checkBirthdays() {
 
     state.friends.forEach(friend => {
         if (normalizeDate(friend.birthday) === today && friend.email) {
-            // Check if we already sent today (store in localStorage)
-            // const sentKey = `birthday-sent-${friend.name}-${today}`;
-            // if (!localStorage.getItem(sentKey)) {
-                sendBirthdayEmail(friend);
-                // localStorage.setItem(sentKey, 'true');
-            // }
+            sendBirthdayEmail(friend);
         }
     });
 }
@@ -659,7 +720,8 @@ function saveSetup() {
         return aDay - bDay;
     });
 
-    saveData();
+    savePersistentData();
+    saveSessionData();
 
     const missingEmails = state.friends.filter(f => !f.email).length;
     let message = 'done! here are the codes:\n\n' +
@@ -699,7 +761,20 @@ window.saveData = saveData;
 window.state = state;
 
 // Initialize and set up birthday checks
-loadData().then(() => {
+loadPersistentData().then(() => {
+    // Restore session data after loading persistent data
+    loadSessionData();
+
+    // If user has a session, restore the UI
+    if (state.currentUser || state.isSetupMode) {
+        showApp();
+        if (state.isSetupMode) {
+            showTab('setup');
+        } else if (state.currentUser) {
+            showTab('timeline');
+        }
+    }
+
     // Set up button event listeners
     document.getElementById('loginBtn').addEventListener('click', checkLogin);
     document.getElementById('logoutBtn')?.addEventListener('click', logout);
