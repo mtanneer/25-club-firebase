@@ -1,0 +1,23 @@
+# Netlify Configuration
+
+[build]
+  publish = "."
+  command = "chmod +x build.sh && ./build.sh"
+
+# Redirect rules
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+# For production context
+[context.production]
+  environment = { CONTEXT = "production" }
+
+# For deploy preview context
+[context.deploy-preview]
+  environment = { CONTEXT = "deploy-preview" }
+
+# For branch deploy context
+[context.branch-deploy]
+  environment = { CONTEXT = "branch-deploy" }

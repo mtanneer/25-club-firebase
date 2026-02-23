@@ -6,6 +6,13 @@
     <title>The 25 Club</title>
     <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700&family=Work+Sans:wght@400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
+    <script>
+        // Set deployment info from environment variables
+        // These will be populated by Netlify build environment
+        window.REPO_NAME = '__REPO_NAME__';
+        window.BRANCH_NAME = '__BRANCH_NAME__';
+        window.COMMIT_SHA = '__COMMIT_SHA__';
+    </script>
 </head>
 <body>
     <div class="container">
@@ -118,6 +125,11 @@
             </div>
         </div>
     </div>
+
+    <!-- Deployment Info Footer -->
+    <footer id="deploymentFooter" class="deployment-footer">
+        <span id="deploymentInfo"></span>
+    </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
     <script type="module" src="script.js"></script>
