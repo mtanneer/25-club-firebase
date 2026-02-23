@@ -44,6 +44,7 @@ const SETUP_PASSWORD = 'setup25';
  *   - reflections: object mapping friend name to their reflection text
  *   - editCounts: object tracking how many times each friend has edited their reflection
  *   - hasPostedFirst: object tracking whether each friend has posted their first draft
+ *   - emailsSent: object mapping friend name to timestamp of when birthday email was sent (prevents duplicates)
  * 
  * Session Data (stored in sessionStorage, NOT persistent):
  *   - currentUser: the logged-in friend object (null if not logged in)
@@ -56,6 +57,7 @@ let state = {
     reflections: {},
     editCounts: {},
     hasPostedFirst: {},
+    emailsSent: {},
 
     // SESSION DATA (in-memory only, survives page refresh via sessionStorage)
     currentUser: null,
@@ -115,6 +117,7 @@ async function loadPersistentData() {
             state.reflections = data.reflections || {};
             state.editCounts = data.editCounts || {};
             state.hasPostedFirst = data.hasPostedFirst || {};
+            state.emailsSent = data.emailsSent || {};
             console.log('Persistent data loaded from Firebase');
         } else {
             console.log('No persistent data found, starting fresh');
@@ -131,6 +134,7 @@ async function savePersistentData() {
             reflections: state.reflections,
             editCounts: state.editCounts,
             hasPostedFirst: state.hasPostedFirst,
+            emailsSent: state.emailsSent,
             lastUpdated: new Date().toISOString()
         });
         console.log('Persistent data saved to Firebase');
@@ -154,6 +158,7 @@ onSnapshot(clubDataRef, (doc) => {
         state.reflections = data.reflections || {};
         state.editCounts = data.editCounts || {};
         state.hasPostedFirst = data.hasPostedFirst || {};
+        state.emailsSent = data.emailsSent || {};
 
         // Re-render if user is logged in
         if (state.currentUser) {
@@ -539,7 +544,12 @@ function sendBirthdayEmail(friend) {
             website_url: WEBPAGE_URL
         }
     ).then(
-        () => console.log(`Birthday email sent to ${friend.email}`),
+        () => {
+            console.log(`Birthday email sent to ${friend.email}`);
+            // Mark email as sent with timestamp
+            state.emailsSent[friend.name] = new Date().toISOString();
+            savePersistentData();
+        },
         (error) => console.error('Email failed:', error)
     );
 }
@@ -579,7 +589,10 @@ function checkBirthdays() {
 
     state.friends.forEach(friend => {
         if (normalizeDate(friend.birthday) === today && friend.email) {
-            sendBirthdayEmail(friend);
+            // Check if email was already sent (avoid duplicate emails)
+            if (!state.emailsSent[friend.name]) {
+                sendBirthdayEmail(friend);
+            }
         }
     });
 }
@@ -604,14 +617,25 @@ function renderSetup() {
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#39;');
 
-    let html = state.friends.map((friend, index) => `
+    let html = state.friends.map((friend, index) => {
+        const emailSentStatus = state.emailsSent[friend.name];
+        const emailSentDisplay = emailSentStatus ? `✓ sent on ${new Date(emailSentStatus).toLocaleDateString()}` : 'not sent';
+        
+        return `
         <div class="friend-row" style="grid-template-columns: 1fr 140px 1fr 40px; margin-bottom: 20px;">
             <input type="text" class="form-input" placeholder="name" value="${escapeHtml(friend.name)}" data-index="${index}" data-field="name">
             <input type="text" class="form-input" placeholder="DD/MM" value="${escapeHtml(friend.birthday)}" data-index="${index}" data-field="birthday">
             <input type="email" class="form-input" placeholder="email" value="${escapeHtml(friend.email || '')}" data-index="${index}" data-field="email">
             <button class="btn btn-remove" data-index="${index}">×</button>
         </div>
-    `).join('');
+        ${state.isSetupMode && friend.name ? `
+        <div style="margin-bottom: 20px; padding: 8px 12px; background: var(--surface-hover); border-radius: 4px; font-size: 0.85rem; display: flex; justify-content: space-between; align-items: center;">
+            <span style="color: var(--text-dim);">email status: ${emailSentDisplay}</span>
+            <button class="btn btn-small btn-toggle-email" data-index="${index}" data-name="${encodeURIComponent(friend.name)}">${emailSentStatus ? 'reset' : 'mark sent'}</button>
+        </div>
+        ` : ''}
+    `;}
+    ).join('');
 
     // If admin, show a reflections management panel
     if (state.isSetupMode) {
@@ -670,6 +694,26 @@ function renderSetup() {
                 if (!confirm(`Delete reflection for ${name}? This will remove their reflection and related metadata. Proceed?`)) return;
                 deleteReflection(name);
                 renderSetup();
+            });
+        });
+
+        // Attach email toggle handlers for admin
+        container.querySelectorAll('.btn-toggle-email').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const name = decodeURIComponent(this.dataset.name || '');
+                if (!name) return;
+                
+                if (state.emailsSent[name]) {
+                    // Reset: remove the email sent record
+                    delete state.emailsSent[name];
+                    savePersistentData();
+                    renderSetup();
+                } else {
+                    // Mark as sent: set current timestamp
+                    state.emailsSent[name] = new Date().toISOString();
+                    savePersistentData();
+                    renderSetup();
+                }
             });
         });
 
