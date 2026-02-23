@@ -161,6 +161,20 @@ header {
     background: var(--surface-hover);
 }
 
+.btn-small {
+    padding: 8px 16px;
+    font-size: 0.85rem;
+    border-radius: 6px;
+    background: var(--accent);
+    color: white;
+    border: none;
+}
+
+.btn-small:hover {
+    background: var(--accent-dim);
+    transform: translateY(-1px);
+}
+
 .hidden {
     display: none;
 }
