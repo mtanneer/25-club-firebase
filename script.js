@@ -804,6 +804,28 @@ window.saveSetup = saveSetup;
 window.saveData = saveData;
 window.state = state;
 
+/**
+ * DEPLOYMENT INFO FOOTER
+ * Display repository and branch information for developers
+ */
+function initializeDeploymentFooter() {
+    const deploymentInfo = document.getElementById('deploymentInfo');
+    if (!deploymentInfo) return;
+
+    // Get deployment info from window variables (set by Netlify build environment)
+    const repo = window.REPO_NAME || '25-club-firebase';
+    const branch = window.BRANCH_NAME || 'local';
+    const commit = window.COMMIT_SHA || '';
+
+    if (repo && branch) {
+        const commitDisplay = commit ? ` • ${commit.substring(0, 7)}` : '';
+        deploymentInfo.textContent = `${repo} / ${branch}${commitDisplay}`;
+    }
+}
+
+// Initialize deployment footer on load
+initializeDeploymentFooter();
+
 // Initialize and set up birthday checks
 loadPersistentData().then(() => {
     // Restore session data after loading persistent data

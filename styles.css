@@ -175,6 +175,22 @@ header {
     transform: translateY(-1px);
 }
 
+.deployment-footer {
+    position: fixed;
+    bottom: 0;
+    right: 0;
+    padding: 8px 12px;
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    background: var(--surface-hover);
+    border-top-left-radius: 4px;
+    z-index: 100;
+    max-width: 300px;
+    text-align: right;
+    border-top: 1px solid var(--border);
+    border-left: 1px solid var(--border);
+}
+
 .hidden {
     display: none;
 }
