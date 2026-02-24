@@ -16,6 +16,7 @@ const TIMEZONES = {
     pacific:  'America/Los_Angeles',  // PST / PDT
     central:  'America/Chicago',      // CST / CDT
     eastern:  'America/New_York',     // EST / EDT
+    atlantic: 'America/Puerto_Rico',   // AST (Atlantic Standard Time, UTC-4)
     european: 'Europe/Paris',         // CET / CEST (pick whichever European city you need)
     indian:   'Asia/Kolkata'          // IST (Indian Standard Time)
 };
@@ -186,7 +187,7 @@ onSnapshot(clubDataRef, (doc) => {
 
 function getToday() {
     const formatter = new Intl.DateTimeFormat('en-GB', {
-        timeZone: TIMEZONES.european,
+        timeZone: TIMEZONES.atlantic,
         day: '2-digit',
         month: '2-digit'
     });
