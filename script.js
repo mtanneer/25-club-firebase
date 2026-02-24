@@ -12,6 +12,14 @@ const firebaseConfig = {
     appId: "1:1008552295041:web:134ee6f6720323517f2b80"
 };
 
+const TIMEZONES = {
+    pacific:  'America/Los_Angeles',  // PST / PDT
+    central:  'America/Chicago',      // CST / CDT
+    eastern:  'America/New_York',     // EST / EDT
+    european: 'Europe/Paris',         // CET / CEST (pick whichever European city you need)
+    indian:   'Asia/Kolkata'          // IST (Indian Standard Time)
+};
+
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
@@ -169,10 +177,22 @@ onSnapshot(clubDataRef, (doc) => {
 });
 
 // Get today's date in DD/MM format
+// function getToday() {
+//     const d = new Date();
+//     const day = String(d.getDate()).padStart(2, '0');
+//     const month = String(d.getMonth() + 1).padStart(2, '0');
+//     return `${day}/${month}`;
+// }
+
 function getToday() {
-    const d = new Date();
-    const day = String(d.getDate()).padStart(2, '0');
-    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const formatter = new Intl.DateTimeFormat('en-GB', {
+        timeZone: TIMEZONES.european,
+        day: '2-digit',
+        month: '2-digit'
+    });
+    const parts = formatter.formatToParts(new Date());
+    const day   = parts.find(p => p.type === 'day').value;
+    const month = parts.find(p => p.type === 'month').value;
     return `${day}/${month}`;
 }
 
