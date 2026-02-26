@@ -187,7 +187,7 @@ onSnapshot(clubDataRef, (doc) => {
 
 function getToday() {
     const formatter = new Intl.DateTimeFormat('en-GB', {
-        timeZone: TIMEZONES.atlantic,
+        timeZone: TIMEZONES.european,
         day: '2-digit',
         month: '2-digit'
     });
